@@ -33,7 +33,11 @@ class Board:
 
     def __init__(self):
         # start with B (user), then A (computer)
+        # stores initially have 0 seeds
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
+
+    def get_store_counts(self):
+        return {"A": self.board[6], "B": self.board[13]}
         
     def move_seeds(self, pit_num, player):
         i = pit_num
@@ -74,9 +78,11 @@ class Board:
         # up to computer's store
         computerDone = True
         for i in range(7, 13):
+            # TESTING
+            # print(f"at {i}: {self.board[i]}")
             if self.board[i] != 0:
                 computerDone = False
-            break
+                break
 
         # TESTING
         # print(f"userDone: {userDone}, computerDone: {computerDone}")
@@ -140,11 +146,38 @@ class Game:
         # "B": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
     }
 
-    player_to_background = {"A": "on_red", "B": "on_blue"}
-
     def __init__(self):
         self.board = Board()
         self.next_player = 'B'
+
+    def run(self):
+        # create computer agent and set its cutoff depth
+        computer = Agent(5)
+
+        print("Welcome to Mancala! Here is the starting board. ")
+        print("Computer: RED")
+        print("You: BLUE")
+        print("Player pits numbered from 1-6, left to right.")
+        self.print_mancala_board()
+
+        # TESTING
+        # print(f"next player: {game.get_next_player()}")
+        while not self.at_terminal_state():
+            if self.get_next_player() == 'B':
+                pit_choice = input("Please enter a pit number to distribute marbles from: ")
+
+                if not (1 <= int(pit_choice) <= 6):
+                    print("Invalid pit choice (select 1-6)")
+                    continue
+
+                print(f"You chose: pit # {pit_choice}")
+                self.move_seeds(int(pit_choice), 'B')
+            else:
+                pit_choice = computer.get_next_action(self.board)
+                print(f"Computer chose: pit # {pit_choice}")
+                self.move_seeds(int(pit_choice), 'A')
+            self.print_mancala_board()
+
 
     def print_mancala_board(self):
         self.board.print_board()
@@ -165,30 +198,7 @@ class Game:
 
 def main():
     game = Game()
-    computer = Agent(5)
-    print("Welcome to Mancala! Here is the starting board. ")
-    print("Computer: RED")
-    print("You: BLUE")
-    print("Player pits numbered from 1-6, left to right.")
-    game.print_mancala_board()
-
-    # TESTING
-    # print(f"next player: {game.get_next_player()}")
-    while not game.at_terminal_state():
-        if game.get_next_player() == 'B':
-            pit_choice = input("Please enter a pit number to distribute marbles from: ")
-
-            if not (1 <= int(pit_choice) <= 6):
-                print("Invalid pit choice (select 1-6)")
-                continue
-
-            print(f"You chose: pit # {pit_choice}")
-            game.move_seeds(int(pit_choice), 'B')
-        else:
-            pit_choice = computer.get_next_action(game.board)
-            print(f"Computer chose: pit # {pit_choice}")
-            game.move_seeds(int(pit_choice), 'A')
-        game.print_mancala_board()
+    game.run()
 
 if __name__ == '__main__':
     main()
