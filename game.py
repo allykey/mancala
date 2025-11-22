@@ -1,5 +1,6 @@
 import termcolor
 from termcolor import colored, cprint
+import random
 
 # == Mancala ==================================================================
 
@@ -9,7 +10,7 @@ class Agent:
         self.depth = 5
         
     def get_next_action(self, board):
-        return 1
+        return random.randint(7, 12)
 
     def eval_func(self, board):
         return 0
@@ -35,10 +36,19 @@ class Board:
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
         
     def move_seeds(self, pit_num, player):
-        i = pit_num - 1
+        i = pit_num
+
+        # subtract 1 to get correct index in board for player
+        if player == 'B':
+            i -= 1
+
+        # get number of seeds in pit
         num_seeds = self.board[i]
+
+        # empty specified pit
         self.board[i] = 0
 
+        # distribute seeds counter-clockwise
         while num_seeds > 0:
             i = (i + 1) % len(self.board)
 
@@ -51,6 +61,7 @@ class Board:
             self.board[i] += 1
             num_seeds -= 1
     
+    # True when either player has no seeds on their side
     def at_terminal_state(self):
         userDone = True
 
@@ -68,7 +79,7 @@ class Board:
             break
 
         # TESTING
-        print(f"userDone: {userDone}, computerDone: {computerDone}")
+        # print(f"userDone: {userDone}, computerDone: {computerDone}")
 
         return userDone or computerDone
     
@@ -133,30 +144,50 @@ class Game:
 
     def __init__(self):
         self.board = Board()
+        self.next_player = 'B'
 
     def print_mancala_board(self):
         self.board.print_board()
     
     def move_seeds(self, pit_num, player):
         self.board.move_seeds(pit_num, player)
+        if player == 'B':
+            self.next_player = 'A'
+        else:
+            self.next_player = 'B'
     
     def at_terminal_state(self):
         return self.board.at_terminal_state()
 
+    def get_next_player(self):
+        return self.next_player
 
 
 def main():
     game = Game()
+    computer = Agent(5)
     print("Welcome to Mancala! Here is the starting board. ")
     print("Computer: RED")
     print("You: BLUE")
     print("Player pits numbered from 1-6, left to right.")
     game.print_mancala_board()
 
+    # TESTING
+    # print(f"next player: {game.get_next_player()}")
     while not game.at_terminal_state():
-        pit_choice = input("Please enter a pit number to distribute marbles from: ")
-        print(f"You chose: pit # {pit_choice}")
-        game.move_seeds(int(pit_choice), 'B')
+        if game.get_next_player() == 'B':
+            pit_choice = input("Please enter a pit number to distribute marbles from: ")
+
+            if not (1 <= int(pit_choice) <= 6):
+                print("Invalid pit choice (select 1-6)")
+                continue
+
+            print(f"You chose: pit # {pit_choice}")
+            game.move_seeds(int(pit_choice), 'B')
+        else:
+            pit_choice = computer.get_next_action(game.board)
+            print(f"Computer chose: pit # {pit_choice}")
+            game.move_seeds(int(pit_choice), 'A')
         game.print_mancala_board()
 
 if __name__ == '__main__':
