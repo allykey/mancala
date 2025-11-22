@@ -3,22 +3,37 @@ from termcolor import colored, cprint
 
 # == Mancala ==================================================================
 
-class Game:
-    # TODO: remove - for testing purposes only
-    count = 0
+class Agent:
+    def __init__(self, depth):
+        # cutoff depth for minimaxing
+        self.depth = 5
+        
+    def get_next_action(self, board):
+        return 1
 
-    mancala_board = {
-        "A": [0, 4, 4, 4, 4, 4, 4], # computer's 
-        "B": [0, 4, 4, 4, 4, 4, 4], # user's
-        # "A": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
-        # "B": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
-    }
+    def eval_func(self, board):
+        return 0
+    
+    def value(self, board):
+        return 0
+    
+    def max_value(self, board):
+        return 0
+    
+    def min_value(self, board):
+        return 0
+    
+    def at_terminal_state(self, board):
+        return False
 
-    # start with B (user), then A (computer)
-    board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
 
+class Board:
     player_to_background = {"A": "on_red", "B": "on_blue"}
 
+    def __init__(self):
+        # start with B (user), then A (computer)
+        self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
+        
     def move_seeds(self, pit_num, player):
         i = pit_num - 1
         num_seeds = self.board[i]
@@ -30,22 +45,33 @@ class Game:
             # skip opponent's store (home)
             if player == 'B' and i == len(self.board) - 1:
                 continue
+            elif player == 'A' and i == 6:
+                continue
 
             self.board[i] += 1
             num_seeds -= 1
+    
+    def at_terminal_state(self):
+        userDone = True
 
-        # i = pit_num + 1
-        # num_seeds = self.mancala_board[player][pit_num]
-        # i = pit_num + 1
+        # up to user's store
+        for i in range(6):
+            if self.board[i] != 0:
+                userDone = False
+                break
 
-        # # update player's board first (counterclockwise)
-        # self.mancala_board[player][pit_num] = 0
-        # while i < len(self.mancala_board[player]) and num_seeds > 0:
-        #     self.mancala_board[player][i] += 1
-        #     i += 1 
-        #     num_seeds -= 1
+        # up to computer's store
+        computerDone = True
+        for i in range(7, 13):
+            if self.board[i] != 0:
+                computerDone = False
+            break
 
-        return
+        # TESTING
+        print(f"userDone: {userDone}, computerDone: {computerDone}")
+
+        return userDone or computerDone
+    
 
     def print_pit(self, num_seeds, player):
         # padding: should add up to exactly 4 spaces when printed with num_seeds
@@ -80,18 +106,7 @@ class Game:
         print(" ", end="")
 
 
-    def print_mancala_board(self):
-        # self.print_home(self.mancala_board['A'][0], 'A')
-        # for pit in self.mancala_board['A'][1:]:
-        #     self.print_pit(pit, 'A')
-        # self.print_home(self.mancala_board['B'][0], 'B')
-        # print()
-        # self.print_empty_home('A')
-        # for pit in (self.mancala_board['B'][1:]):
-        #     self.print_pit(pit, 'B')
-        # self.print_empty_home('B')
-        # print()    
-
+    def print_board(self):
         self.print_home(self.board[len(self.board) - 1], 'A')
         for pit in reversed(self.board[7:len(self.board) - 1]):
             self.print_pit(pit, 'A')
@@ -103,8 +118,30 @@ class Game:
         self.print_empty_home('B')
         print()    
 
-    def atTerminalState(self):
-        return False
+
+
+class Game:
+    # TODO: remove mancala_board (for testing only)
+    mancala_board = {
+        "A": [0, 4, 4, 4, 4, 4, 4], # computer's 
+        "B": [0, 4, 4, 4, 4, 4, 4], # user's
+        # "A": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
+        # "B": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
+    }
+
+    player_to_background = {"A": "on_red", "B": "on_blue"}
+
+    def __init__(self):
+        self.board = Board()
+
+    def print_mancala_board(self):
+        self.board.print_board()
+    
+    def move_seeds(self, pit_num, player):
+        self.board.move_seeds(pit_num, player)
+    
+    def at_terminal_state(self):
+        return self.board.at_terminal_state()
 
 
 
@@ -116,13 +153,11 @@ def main():
     print("Player pits numbered from 1-6, left to right.")
     game.print_mancala_board()
 
-    while game.count < 10 and not game.atTerminalState():
+    while not game.at_terminal_state():
         pit_choice = input("Please enter a pit number to distribute marbles from: ")
         print(f"You chose: pit # {pit_choice}")
         game.move_seeds(int(pit_choice), 'B')
         game.print_mancala_board()
-        # print()
-        game.count += 1
 
 if __name__ == '__main__':
     main()
