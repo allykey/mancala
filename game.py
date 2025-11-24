@@ -1,32 +1,9 @@
 import termcolor
 from termcolor import colored, cprint
 import random
+import copy
 
 # == Mancala ==================================================================
-
-class Agent:
-    def __init__(self, depth):
-        # cutoff depth for minimaxing
-        self.depth = 5
-        
-    def get_next_action(self, board):
-        return random.randint(7, 12)
-
-    def eval_func(self, board):
-        return 0
-    
-    def value(self, board):
-        return 0
-    
-    def max_value(self, board):
-        return 0
-    
-    def min_value(self, board):
-        return 0
-    
-    def at_terminal_state(self, board):
-        return False
-
 
 class Board:
     player_to_background = {"A": "on_red", "B": "on_blue"}
@@ -37,12 +14,12 @@ class Board:
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
 
     def get_store_counts(self):
-        return {"A": self.board[6], "B": self.board[13]}
+        return {"A": self.board[13], "B": self.board[6]}
         
     def move_seeds(self, pit_num, player):
         i = pit_num
 
-        # subtract 1 to get correct index in board for player
+        # subtract 1 to get correct index in board for user
         if player == 'B':
             i -= 1
 
@@ -64,8 +41,26 @@ class Board:
 
             self.board[i] += 1
             num_seeds -= 1
+
+    # excluding store seeds
+    def get_player_seeds(self, player):
+        score = 0
+
+        # for user
+        start = 0
+        end = 6
+
+        # for computer
+        if player == 'A':
+            start = 7
+            end = 13
+
+        for i in range(start, end):
+            score += self.board[i]
+
+        return score
     
-    # True when either player has no seeds on their side
+    # Returns true when either player has no seeds on their side
     def at_terminal_state(self):
         userDone = True
 
@@ -135,6 +130,64 @@ class Board:
         self.print_empty_home('B')
         print()    
 
+class Agent:
+    def __init__(self, depth):
+        # cutoff depth for minimaxing
+        self.depth = depth
+        
+    def get_next_action(self, board: Board):
+        # must be pits 7-13
+        next_action = 0 
+        max_score = float('-inf')
+
+        # consider all available pits
+        for i in range(7, 13):
+            board_copy = copy.deepcopy(board)
+            board_copy.move_seeds(i, 'A')
+
+            # TESTING
+            # print("TESTING AGENT")
+            # board_copy.print_board()
+
+            val = self.value(board_copy)
+
+            # TESTING
+            # print(f"val: {val}")
+
+            if val > max_score:
+                max_score = val
+                next_action = i
+
+        return next_action
+
+    # heuristic for getting utility of state
+    # TODO: account for when not enough seeds to reach store
+    def eval_func(self, board: Board):
+        # TESTING
+        # print(f"{board.get_store_counts()['A']}")
+        return board.get_store_counts()['A']
+    
+    def value(self, board: Board):
+        if self.at_terminal_state(board):
+            return board.get_player_seeds('A') + board.get_store_counts()['A']
+        else:
+            return self.eval_func(board)
+    
+    def max_value(self, board: Board, treeLevel):
+        return 0
+    
+    def min_value(self, board: Board, treeLevel):
+        return 0
+    
+    def at_terminal_state(self, board: Board):
+        # return board.at_terminal_state()
+        return False
+    
+    def agentIsMin(self, player):
+        return player == 'B'
+    
+    def atMaxDepth(self, treeLevel):
+        return treeLevel / 2 == self.depth
 
 
 class Game:
