@@ -13,15 +13,51 @@ class Board:
         # stores initially have 0 seeds
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
 
+    # get the seed count in a single specified pit
+    def get_pit_seeds(self, pit_num):
+        # if not (1 <= pit_num <= 6) or not (7 <= pit_num <= 12):
+        if not (0 <= pit_num <= 5) and not (7 <= pit_num <= 12):
+            return -1
+        
+        # # user (B)'s pit_num must subtract 1 to match indexing
+        # if (1 <= pit_num <= 6):
+        #     return self.board[pit_num - 1]
+        
+        return self.board[pit_num]
+    
+    # only does this for player's own pits
+    def perf_dist_from_store(self, player):
+        # default to player B (user)
+        start = 0
+        end = 6 
+        if player == 'A':
+            start = 7
+            end = 13
+
+        # calculate distances from player's pits to store (excluding store)
+        for i in range(start, end):
+            dist = self.get_dist_from_store(i, player)
+            if (self.get_pit_seeds(i) == dist):
+                return True
+            
+        return False
+
+    # does not consider pits from opponent's side
+    def get_dist_from_store(self, pit_num, player):
+        if player == 'A':
+            return 13 - pit_num
+        if player == 'B':
+            return 6 - pit_num
+    
     def get_store_counts(self):
         return {"A": self.board[13], "B": self.board[6]}
         
     def move_seeds(self, pit_num, player):
         i = pit_num
 
-        # subtract 1 to get correct index in board for user
-        if player == 'B':
-            i -= 1
+        # # subtract 1 to get correct index in board for user
+        # if player == 'B':
+        #     i -= 1
 
         # get number of seeds in pit
         num_seeds = self.board[i]
@@ -42,7 +78,8 @@ class Board:
             self.board[i] += 1
             num_seeds -= 1
 
-    # excluding store seeds
+    # excluding store seeds, get the sum of seeds in all pits associated with
+    # one player
     def get_player_seeds(self, player):
         score = 0
 
@@ -142,6 +179,12 @@ class Agent:
 
         # consider all available pits
         for i in range(7, 13):
+            # skip empty pits
+            if board.get_pit_seeds(i) == 0:
+                # TESTING
+                print(f"pit {i} has no seeds, skip")
+                continue
+
             board_copy = copy.deepcopy(board)
             board_copy.move_seeds(i, 'A')
 
@@ -161,11 +204,21 @@ class Agent:
         return next_action
 
     # heuristic for getting utility of state
-    # TODO: account for when not enough seeds to reach store
     def eval_func(self, board: Board):
         # TESTING
         # print(f"{board.get_store_counts()['A']}")
-        return board.get_store_counts()['A']
+
+        # good: put seed in store
+        utility = board.get_store_counts()['A']
+
+        # TODO: if no seed can make it to the pit, then what?
+
+        # good: a pit has exactly the amount of seeds to make it
+        # to the store in the next round
+        if board.perf_dist_from_store('A'):
+            utility += 1
+
+        return utility
     
     def value(self, board: Board):
         if self.at_terminal_state(board):
@@ -224,7 +277,9 @@ class Game:
                     continue
 
                 print(f"You chose: pit # {pit_choice}")
-                self.move_seeds(int(pit_choice), 'B')
+
+                # subtract 1 from pit_choice to get correct index on board
+                self.move_seeds(int(pit_choice) - 1, 'B') 
             else:
                 pit_choice = computer.get_next_action(self.board)
                 print(f"Computer chose: pit # {pit_choice}")
