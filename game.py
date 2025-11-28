@@ -13,6 +13,24 @@ class Board:
         # stores initially have 0 seeds
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
 
+    def get_legal_actions(self, player):
+        start = 0
+        end = 6
+        if player == 'A':
+            start = 7
+            end = 13
+
+        legal_actions = []
+
+        # consider all of player's available pits (excluding store)
+        for i in range(start, end):
+            # skip empty pits
+            if self.get_pit_seeds(i) == 0:
+                continue 
+            legal_actions.append(i)
+
+        return legal_actions
+
     # get the seed count in a single specified pit
     def get_pit_seeds(self, pit_num):
         # if not (1 <= pit_num <= 6) or not (7 <= pit_num <= 12):
@@ -172,36 +190,13 @@ class Agent:
         # cutoff depth for minimaxing
         self.depth = depth
         
+
     def get_next_action(self, board: Board):
-        # must be pits 7-13
-        next_action = 0 
-        max_score = float('-inf')
+        # start from computer's maximizing point of view
+        tree_level = 0
+        utility, action = self.max_value(board, tree_level)
+        return action
 
-        # consider all available pits
-        for i in range(7, 13):
-            # skip empty pits
-            if board.get_pit_seeds(i) == 0:
-                # TESTING
-                print(f"pit {i} has no seeds, skip")
-                continue
-
-            board_copy = copy.deepcopy(board)
-            board_copy.move_seeds(i, 'A')
-
-            # TESTING
-            # print("TESTING AGENT")
-            # board_copy.print_board()
-
-            val = self.value(board_copy)
-
-            # TESTING
-            # print(f"val: {val}")
-
-            if val > max_score:
-                max_score = val
-                next_action = i
-
-        return next_action
 
     # heuristic for getting utility of state
     def eval_func(self, board: Board):
@@ -209,56 +204,99 @@ class Agent:
         # print(f"{board.get_store_counts()['A']}")
 
         # good: put seed in store
-        utility = board.get_store_counts()['A']
+        store_count = board.get_store_counts()['A']
 
         # TODO: if no seed can make it to the pit, then what?
 
         # good: a pit has exactly the amount of seeds to make it
         # to the store in the next round
+        perf_dist = 0
         if board.perf_dist_from_store('A'):
-            utility += 1
+            perf_dist = 1
 
-        return utility
+        # good: more seeds on own side of board
+        pit_count = board.get_player_seeds('A')
+
+        return 0.5 * store_count + 0.25 * perf_dist + 0.25 * pit_count
     
-    def value(self, board: Board):
-        if self.at_terminal_state(board):
-            return board.get_player_seeds('A') + board.get_store_counts()['A']
+
+    def value(self, board: Board, tree_level):
+        if self.at_terminal_state(board) or self.at_max_depth(tree_level):
+            return (self.eval_func(board), None)
+        # else:
+            # return self.eval_func(board)
+        elif self.agent_is_min(tree_level):
+            return self.min_value(board, tree_level)
         else:
-            return self.eval_func(board)
+            return self.max_value(board, tree_level)
+
     
-    def max_value(self, board: Board, treeLevel):
-        return 0
+    def max_value(self, board: Board, tree_level):
+        max_score = float('-inf')
+        next_action = None
+
+        # iterate through pits player can select
+        for action in board.get_legal_actions('A'):
+
+            # consider a possible future without changing the original board
+            board_copy = copy.deepcopy(board)
+            board_copy.move_seeds(action, 'A')
+
+            # get estimated utility of state after completing action
+            val = self.value(board_copy, tree_level + 1)[0]
+
+            if val > max_score:
+                max_score = val
+                next_action = action
+
+        # return (utility, action) that leads to best (highest) estimated utility
+        return (max_score, next_action)
     
-    def min_value(self, board: Board, treeLevel):
-        return 0
+
+    def min_value(self, board: Board, tree_level):
+        min_score = float('inf')
+        next_action = None
+
+        # iterate through pits player can select
+        for action in board.get_legal_actions('B'):
+
+            # consider a possible future without changing the original board
+            board_copy = copy.deepcopy(board)
+            board_copy.move_seeds(action, 'B')
+
+            # get estimated utility of state after completing action
+            val = self.value(board_copy, tree_level + 1)[0]
+
+            if val < min_score:
+                min_score = val
+                next_action = action
+
+        # return (utility, action) that leads to best (lowest) estimated utility
+        return (min_score, next_action)
     
+
     def at_terminal_state(self, board: Board):
-        # return board.at_terminal_state()
-        return False
+        return board.at_terminal_state()
+        # return False
     
-    def agentIsMin(self, player):
-        return player == 'B'
+
+    def agent_is_min(self, tree_level):
+        # i.e, player is B (user)
+        return tree_level % 2 == 1
     
-    def atMaxDepth(self, treeLevel):
-        return treeLevel / 2 == self.depth
+
+    def at_max_depth(self, tree_level):
+        return tree_level / 2 == self.depth
 
 
 class Game:
-    # TODO: remove mancala_board (for testing only)
-    mancala_board = {
-        "A": [0, 4, 4, 4, 4, 4, 4], # computer's 
-        "B": [0, 4, 4, 4, 4, 4, 4], # user's
-        # "A": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
-        # "B": ['h:0', '1:4', '2:4', '3:4', '4:4', '5:4', '6:4'],
-    }
-
     def __init__(self):
         self.board = Board()
         self.next_player = 'B'
 
     def run(self):
         # create computer agent and set its cutoff depth
-        computer = Agent(5)
+        computer = Agent(2)
 
         print("Welcome to Mancala! Here is the starting board. ")
         print("Computer: RED")
@@ -290,6 +328,7 @@ class Game:
     def print_mancala_board(self):
         self.board.print_board()
     
+
     def move_seeds(self, pit_num, player):
         self.board.move_seeds(pit_num, player)
         if player == 'B':
@@ -297,8 +336,10 @@ class Game:
         else:
             self.next_player = 'B'
     
+
     def at_terminal_state(self):
         return self.board.at_terminal_state()
+
 
     def get_next_player(self):
         return self.next_player
