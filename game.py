@@ -73,10 +73,6 @@ class Board:
     def move_seeds(self, pit_num, player):
         i = pit_num
 
-        # # subtract 1 to get correct index in board for user
-        # if player == 'B':
-        #     i -= 1
-
         # get number of seeds in pit
         num_seeds = self.board[i]
 
@@ -194,7 +190,8 @@ class Agent:
     def get_next_action(self, board: Board):
         # start from computer's maximizing point of view
         tree_level = 0
-        utility, action = self.max_value(board, tree_level)
+        # utility, action = self.max_value(board, tree_level)
+        utility, action = self.max_value(board, tree_level, float('-inf'), float('inf'))
         return action
 
 
@@ -206,7 +203,7 @@ class Agent:
         # good: put seed in store
         store_count = board.get_store_counts()['A']
 
-        # TODO: if no seed can make it to the pit, then what?
+        # TODO: if no seed can make it to the store, then what?
 
         # good: a pit has exactly the amount of seeds to make it
         # to the store in the next round
@@ -219,19 +216,15 @@ class Agent:
 
         return 0.5 * store_count + 0.25 * perf_dist + 0.25 * pit_count
     
-
-    def value(self, board: Board, tree_level):
+    def value(self, board: Board, tree_level, alpha, beta):
         if self.at_terminal_state(board) or self.at_max_depth(tree_level):
             return (self.eval_func(board), None)
-        # else:
-            # return self.eval_func(board)
         elif self.agent_is_min(tree_level):
-            return self.min_value(board, tree_level)
+            return self.min_value(board, tree_level, alpha, beta)
         else:
-            return self.max_value(board, tree_level)
+            return self.max_value(board, tree_level, alpha, beta)
 
-    
-    def max_value(self, board: Board, tree_level):
+    def max_value(self, board: Board, tree_level, alpha, beta):
         max_score = float('-inf')
         next_action = None
 
@@ -243,17 +236,25 @@ class Agent:
             board_copy.move_seeds(action, 'A')
 
             # get estimated utility of state after completing action
-            val = self.value(board_copy, tree_level + 1)[0]
+            val = self.value(board_copy, tree_level + 1, alpha, beta)[0]
+
+            # value is greater than minimum value (beta)
+            # return right away (the maximizer will prefer this node anyway)
+            if val > beta:
+                return (val, action)
 
             if val > max_score:
                 max_score = val
                 next_action = action
 
+            # update best value seen by maximizers
+            if max_score > alpha:
+                alpha = max_score
+
         # return (utility, action) that leads to best (highest) estimated utility
         return (max_score, next_action)
     
-
-    def min_value(self, board: Board, tree_level):
+    def min_value(self, board: Board, tree_level, alpha, beta):
         min_score = float('inf')
         next_action = None
 
@@ -265,15 +266,24 @@ class Agent:
             board_copy.move_seeds(action, 'B')
 
             # get estimated utility of state after completing action
-            val = self.value(board_copy, tree_level + 1)[0]
+            val = self.value(board_copy, tree_level + 1, alpha, beta)[0]
+
+            # value is less than best value (alpha)
+            # return right away (the minimizer will pick this node anyway)
+            if val < alpha:
+                return (val, action)
 
             if val < min_score:
                 min_score = val
                 next_action = action
 
+            # update best value seen by minimizers
+            if min_score < beta:
+                beta = min_score
+
         # return (utility, action) that leads to best (lowest) estimated utility
         return (min_score, next_action)
-    
+
 
     def at_terminal_state(self, board: Board):
         return board.at_terminal_state()
@@ -296,7 +306,7 @@ class Game:
 
     def run(self):
         # create computer agent and set its cutoff depth
-        computer = Agent(2)
+        computer = Agent(5)
 
         print("Welcome to Mancala! Here is the starting board. ")
         print("Computer: RED")
