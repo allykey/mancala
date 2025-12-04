@@ -12,7 +12,11 @@ class Board:
         # start with B (user), then A (computer)
         # stores initially have 0 seeds
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
+        self.extra_move = None
 
+    def gets_extra_move(self):
+        return self.extra_move
+    
     def tally_up(self):
         store_counts = self.get_store_counts()
         b_score = store_counts['B'] + self.get_player_seeds('B')
@@ -85,7 +89,7 @@ class Board:
             i = (i + 1) % len(self.board)
 
             # skip opponent's store (home)
-            if player == 'B' and i == len(self.board) - 1:
+            if player == 'B' and i == 13:
                 continue
             elif player == 'A' and i == 6:
                 continue
@@ -93,6 +97,14 @@ class Board:
             self.board[i] += 1
             num_seeds -= 1
 
+        # if last seed lands in pit, active player gets an extra turn
+        if (player == 'B' and i == 6):
+            self.extra_move = 'B'
+        elif (player == 'A' and i == 13):
+            self.extra_move = 'A'
+        else:
+            self.extra_move = None
+            
     # excluding store seeds, get the sum of seeds in all pits associated with
     # one player
     def get_player_seeds(self, player):
@@ -411,6 +423,8 @@ class Game:
 
 
     def get_next_player(self):
+        if not (self.board.gets_extra_move() == None):
+            return self.board.gets_extra_move()
         return self.next_player
 
 
