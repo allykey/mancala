@@ -13,6 +13,7 @@ class Board:
         # stores initially have 0 seeds
         self.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]
         self.extra_move = None
+        self.current_capture = None
 
     def gets_extra_move(self):
         return self.extra_move
@@ -104,6 +105,39 @@ class Board:
             self.extra_move = 'A'
         else:
             self.extra_move = None
+
+        # ACCOUNT FOR CAPTURES
+        capture_occurred = False
+        if self.get_pit_seeds(i) == 1:
+            # check if seed landed on own side
+            if (player == 'B' and 0 <= i <= 5) or (player == 'A' and 7 <= i <= 12):
+                # check if opposite pit has seeds
+                if self.get_pit_seeds(12 - i) > 0:
+                    self.current_capture = (player, i, 12 - i)
+                    capture_occurred = True
+        if not capture_occurred:
+            self.current_capture = None
+
+    def get_capture(self):
+        return self.current_capture
+    
+    # assumes self.current_capture has been set correctly
+    def perform_capture(self):
+        # unpack capture tuple
+        capturing_player, capturing_pit, captured_pit = self.current_capture
+
+        # determine store index based on player
+        store = 6
+        if capturing_player == 'A':
+            store = 13
+        
+        # move pit seeds to store
+        self.board[store] = self.board[store] + self.board[capturing_pit] + self.board[captured_pit]
+
+        # empty relevant pits
+        self.board[capturing_pit] = 0
+        self.board[captured_pit] = 0
+        return
             
     # excluding store seeds, get the sum of seeds in all pits associated with
     # one player
@@ -368,6 +402,8 @@ class Game:
 
             self.print_mancala_board()
             print()
+            self.display_capture()
+            print()
 
         self.display_winner()
 
@@ -402,6 +438,8 @@ class Game:
                 self.move_seeds(int(pit_choice), 'A')
             self.print_mancala_board()
             print()
+            self.display_capture()
+            print()
 
         self.display_winner()
 
@@ -426,6 +464,20 @@ class Game:
         if not (self.board.gets_extra_move() == None):
             return self.board.gets_extra_move()
         return self.next_player
+    
+    
+    def display_capture(self):
+        capture_result = self.board.get_capture()
+
+        # TESTING
+        # print(f"capture_result: {capture_result}")
+        
+        if capture_result:
+            capturing_player, capturing_pit, captured_pit = capture_result
+            print(f"{capturing_player} has captured seeds from pit # {captured_pit}!") 
+            self.board.perform_capture()
+            self.print_mancala_board()
+        return 
 
 
 def main():
