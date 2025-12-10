@@ -251,17 +251,19 @@ class Agent:
 
     # return estimated next best action for player
     def get_next_action_research(self, board: Board):
-        tree_level = 0
-        best_value = float('-inf')
-        best_action = None
-        for action in board.get_legal_actions(self.side):
-            board_copy = copy.deepcopy(board)
-            board_copy.move_seeds(action, self.side)
-            value = self.standard_minimax(self.side, board_copy, float('-inf'), float('inf'), tree_level)
-            if value > best_value:
-                best_action = action
+        # tree_level = 0
+        # best_value = float('-inf')
+        # best_action = None
+        # for action in board.get_legal_actions(self.side):
+        #     board_copy = copy.deepcopy(board)
+        #     board_copy.move_seeds(action, self.side)
+        #     value = self.standard_minimax(self.side, board_copy, float('-inf'), float('inf'), tree_level)
+        #     if value > best_value:
+        #         best_action = action
         
-        return best_action
+        # return best_action
+
+        return self.standard_minimax(self.side, board, float('-inf'), float('inf'), 0)["action"]
 
     # heuristic for getting utility of state
     def eval_func(self, board: Board):
@@ -293,14 +295,17 @@ class Agent:
         return 0.75 * store_count + 0.25 * pit_count
     
     # From research paper
-    # This minimaxing function returns just an estimated value for a given board
-    # according to the paper, the optimal depth is 4
+    # This minimaxing function returns a dictionary of the best action to take and its associated value 
+    # According to the paper, the optimal depth is 4
     def standard_minimax(self, player, board: Board, alpha, beta, tree_level):
         # print(f'tree level:{tree_level}')
         if self.at_terminal_state(board) or self.at_max_depth(tree_level):
-            return self.eval_func_research(board)
+            return {"value": self.eval_func_research(board), "action": None}
         
         best_value = 0
+        best_action = None
+
+        # take maximizing pov
         if player == self.side:
             best_value = float('-inf')
 
@@ -309,61 +314,41 @@ class Agent:
                 board_copy = copy.deepcopy(board)
                 board_copy.move_seeds(action, self.side)
 
-                value = 0
                 # an extra turn is possible (last seed landed in own store)
                 if board_copy.gets_extra_move() == self.side:
-                    value = self.standard_minimax(self.side, board_copy, alpha, beta, tree_level)
+                    result = self.standard_minimax(self.side, board_copy, alpha, beta, tree_level)
                 else:
-                    value = self.standard_minimax(self.opponent_side, board_copy, alpha, beta, tree_level + 1)
-
-                # # value is greater than minimum value (beta)
-                # # return right away (the maximizer will prefer this node anyway)
-                # if value > best_value:
-                #     best_value = value
-
-                # if value > beta:
-                #     return value
-
-                # # update best value seen by maximizers
-                # if best_value > alpha:
-                #     alpha = best_value
+                    result = self.standard_minimax(self.opponent_side, board_copy, alpha, beta, tree_level + 1)
                     
-                best_value = max(best_value, value)
+                if result["value"] > best_value:
+                    best_value = result["value"]
+                    best_action = action
+
                 alpha = max(alpha, best_value)
                 if beta <= alpha:
                     break
-        else: # go to opponent's POV
+        else: # take opponent's (minimizing) pov 
             best_value = float('inf')
 
             for action in board.get_legal_actions(self.opponent_side):
                 board_copy = copy.deepcopy(board)
                 board_copy.move_seeds(action, self.opponent_side)
 
-                value = 0
                 # an extra turn is possible for agent's opponent (last seed landed in opponent's store)
                 if board_copy.gets_extra_move() == self.opponent_side:
-                    value = self.standard_minimax(self.opponent_side, board_copy, alpha, beta, tree_level)
+                    result = self.standard_minimax(self.opponent_side, board_copy, alpha, beta, tree_level)
                 else:
-                    value = self.standard_minimax(self.side, board_copy, alpha, beta, tree_level + 1)
+                    result = self.standard_minimax(self.side, board_copy, alpha, beta, tree_level + 1)
 
-                # # value is less than best value (alpha)
-                # # return right away (the minimizer will pick this node anyway)
-                # if value < best_value:
-                #     best_value = value
+                if result["value"] < best_value:    
+                    best_value = result["value"]
+                    best_action = action
 
-                # if value < alpha:
-                #     return value
-
-                # # update best value seen by minimizers
-                # if best_value < beta:
-                #     beta = best_value
-
-                best_value = min(value, best_value)
                 beta = min(beta, best_value)
                 if beta >= alpha:
                     break
         
-        return best_value
+        return {"value": best_value, "action": best_action}
 
     
     def value(self, board: Board, tree_level, alpha, beta):
@@ -481,14 +466,21 @@ class Game:
 
         while not self.at_terminal_state():
             if self.get_next_player() == 'B':
+                tic = time.perf_counter()
                 pit_choice = south_agent.get_next_action(self.board)
+                toc = time.perf_counter()
+                print(f"Decision took {toc - tic} seconds")
 
                 # add 1 because 0-indexing is weird to read
                 print(f"Blue chose pit # {pit_choice + 1}")
 
                 self.move_seeds(int(pit_choice), 'B') 
             else:
+                tic = time.perf_counter()
                 pit_choice = north_agent.get_next_action(self.board)
+                toc = time.perf_counter()
+                print(f"Decision took {toc - tic} seconds")
+
                 print(f"Red chose pit # {pit_choice}")
                 self.move_seeds(int(pit_choice), 'A')
 
