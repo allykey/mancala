@@ -263,7 +263,9 @@ class Agent:
         
         # return best_action
 
-        return self.standard_minimax(self.side, board, float('-inf'), float('inf'), 0)["action"]
+        # return self.standard_minimax(self.side, board, float('-inf'), float('inf'), 0)["action"]
+    
+        return self.modified_minimax(self.side, board, float('-inf'), float('inf'), 0)
 
     # heuristic for getting utility of state
     def eval_func(self, board: Board):
@@ -292,8 +294,64 @@ class Agent:
     def eval_func_research(self, board: Board):
         store_count = board.get_store_counts()[self.side]
         pit_count = board.get_player_seeds(self.side)
-        return 0.75 * store_count + 0.25 * pit_count
+        # return 0.75 * store_count + 0.25 * pit_count
+        return 0.5 * store_count + 0.5 * pit_count
     
+    # From research paper
+    # This modified minimaxing function returns the best action to take for the passed-in
+    # player given a state (board layout)
+    def modified_minimax(self, player, board: Board, alpha, beta, tree_level):
+        # stopping conditions
+        if not (self.at_terminal_state(board) or self.at_max_depth(tree_level)):
+            # get action leading to extra turn, if any
+            action = self.last_seed_to_kahala(player, board)
+
+            # extra turn possible; take immediately
+            if action:
+                return action
+            
+            # get action leading to capture, if any
+            action = self.last_seed_to_target_simple(player, board)
+
+            # capture possible; take immediately
+            if action:
+                return action
+            
+            # none of the special cases above have been met; commence standard minimaxing
+            return self.standard_minimax(player, board, alpha, beta, tree_level)["action"]
+
+        # this shouldn't happen 
+        return None
+    
+    # From research paper
+    # Returns the first-discovered action leading to a capture for the passed-in player
+    def last_seed_to_target_simple(self, player, board: Board):
+        for action in board.get_legal_actions(player):
+            board_copy = copy.deepcopy(board)
+            board_copy.move_seeds(action, player)
+
+            # get resulting capture, if any
+            capture = board_copy.get_capture()
+
+            # capture exists
+            if capture:
+                capturing_player, capturing_pit, captured_pit = capture
+
+                # extra safety check
+                if capturing_player == player:
+                    return action
+
+    # From research paper
+    # Returns first-discovered action leading to an extra move for the passed-in player
+    def last_seed_to_kahala(self, player, board: Board):
+        for action in board.get_legal_actions(player):
+            board_copy = copy.deepcopy(board)
+            board_copy.move_seeds(action, player)
+
+            # extra check to make sure it's the passed-in playe that gets the advantage
+            if board_copy.gets_extra_move() == player:
+                return action
+
     # From research paper
     # This minimaxing function returns a dictionary of the best action to take and its associated value 
     # According to the paper, the optimal depth is 4
@@ -561,6 +619,9 @@ class Game:
         
         if capture_result:
             capturing_player, capturing_pit, captured_pit = capture_result
+            # account for zero-indexing for B's pits
+            if capturing_player == 'A':
+                captured_pit += 1 
             print(f"{capturing_player} has captured seeds from pit # {captured_pit}!") 
             self.board.perform_capture()
             self.print_mancala_board()
