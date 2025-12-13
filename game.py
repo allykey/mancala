@@ -251,20 +251,6 @@ class Agent:
 
     # return estimated next best action for player
     def get_next_action_research(self, board: Board):
-        # tree_level = 0
-        # best_value = float('-inf')
-        # best_action = None
-        # for action in board.get_legal_actions(self.side):
-        #     board_copy = copy.deepcopy(board)
-        #     board_copy.move_seeds(action, self.side)
-        #     value = self.standard_minimax(self.side, board_copy, float('-inf'), float('inf'), tree_level)
-        #     if value > best_value:
-        #         best_action = action
-        
-        # return best_action
-
-        # return self.standard_minimax(self.side, board, float('-inf'), float('inf'), 0)["action"]
-    
         return self.modified_minimax(self.side, board, float('-inf'), float('inf'), 0)
 
     # heuristic for getting utility of state
@@ -530,7 +516,7 @@ class Game:
                 print(f"Decision took {toc - tic} seconds")
 
                 # add 1 because 0-indexing is weird to read
-                print(f"Blue chose pit # {pit_choice + 1}")
+                print(f"B chose pit # {pit_choice + 1}")
 
                 self.move_seeds(int(pit_choice), 'B') 
             else:
@@ -539,7 +525,7 @@ class Game:
                 toc = time.perf_counter()
                 print(f"Decision took {toc - tic} seconds")
 
-                print(f"Red chose pit # {pit_choice}")
+                print(f"A chose pit # {pit_choice}")
                 self.move_seeds(int(pit_choice), 'A')
 
             self.print_mancala_board()
@@ -554,8 +540,8 @@ class Game:
         computer = Agent(4, 'A', 'B')
 
         print("Welcome to Mancala! Here is the starting board. ")
-        print("Computer: RED")
-        print("You: BLUE")
+        print("Computer: RED (A)")
+        print("You: BLUE (B)")
         print("Player pits numbered from 1-6, left to right.")
         self.print_mancala_board()
         print()
@@ -579,7 +565,7 @@ class Game:
                 pit_choice = computer.get_next_action(self.board)
                 toc = time.perf_counter()
                 print(f"Decision took {toc - tic} seconds")
-                print(f"Computer chose: pit # {pit_choice}")
+                print(f"A chose: pit # {pit_choice}")
                 self.move_seeds(int(pit_choice), 'A')
             self.print_mancala_board()
             print()
@@ -606,7 +592,9 @@ class Game:
 
 
     def get_next_player(self):
-        if not (self.board.gets_extra_move() == None):
+        extra_turn_player = self.board.gets_extra_move()
+        if extra_turn_player:
+            print(f"{extra_turn_player} gets an extra move.")
             return self.board.gets_extra_move()
         return self.next_player
     
