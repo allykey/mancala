@@ -542,7 +542,7 @@ class Game:
         print("Welcome to Mancala! Here is the starting board. ")
         print("Computer: RED (A)")
         print("You: BLUE (B)")
-        print("Player pits numbered from 1-6, left to right.")
+        print("Your pits are numbered from 1-6, left to right.")
         self.print_mancala_board()
         print()
 
@@ -552,7 +552,7 @@ class Game:
             if self.get_next_player() == 'B':
                 pit_choice = input("Please enter a pit number to distribute marbles from: ")
 
-                if not (1 <= int(pit_choice) <= 6):
+                if not pit_choice.isdigit() or not (1 <= int(pit_choice) <= 6):
                     print("Invalid pit choice (select 1-6)")
                     continue
 
@@ -565,7 +565,7 @@ class Game:
                 pit_choice = computer.get_next_action(self.board)
                 toc = time.perf_counter()
                 print(f"Decision took {toc - tic} seconds")
-                print(f"A chose: pit # {pit_choice}")
+                print(f"Computer chose: pit # {pit_choice}")
                 self.move_seeds(int(pit_choice), 'A')
             self.print_mancala_board()
             print()
